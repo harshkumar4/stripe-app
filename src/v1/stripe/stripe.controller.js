@@ -1,6 +1,8 @@
 const stripe = require("../../configs/stripe.js");
 const errorHandler = require("../../utils/errorHandler");
 
+const Product = require("../product/product.model.js");
+const Transaction = require("../transactions/transactions.model.js");
 const User = require("./../user/user.model.js");
 
 const webhook = errorHandler(async (req, res, next) => {
@@ -24,33 +26,41 @@ const webhook = errorHandler(async (req, res, next) => {
 const checkout = errorHandler(async (req, res, next) => {
   const userId = req.userId;
   const productId = req.body.productId;
-  let error;
+  // let error;
 
   if (!productId) {
     res.status(406).json({ message: "Missing Product ID!" });
     return;
   }
 
-  const user = await User.findById(userId);
+  const resolves = await Promise.all([
+    User.findById(userId),
+    Product.findById(productId),
+  ]);
 
-  const prices = await stripe.prices
-    .list({
-      product: productId.trim(),
-    })
-    .catch((val) => {
-      error = val;
-    });
+  const user = resolves[0];
+  const product = resolves[1];
 
-  if (error === null || !prices || prices.data.length === 0) {
-    return res.status(404).json({ message: "No prices found for the product" });
+  // const prices = await stripe.prices
+  //   .list({
+  //     product: productId.trim(),
+  //   })
+  //   .catch((val) => {
+  //     error = val;
+  //   });
+
+  if (product == null) {
+    return res
+      .status(404)
+      .json({ message: "No Product found for the provided Product ID!" });
   }
 
-  const priceId = prices.data[0].id;
+  // const priceId = prices.data[0].id;
 
   const session = await stripe.checkout.sessions.create({
     line_items: [
       {
-        price: priceId,
+        price: product.stripe_price_id,
         quantity: 1,
       },
     ],
@@ -58,6 +68,16 @@ const checkout = errorHandler(async (req, res, next) => {
     mode: "payment",
     success_url: `https://www.youtube.com`,
     cancel_url: `https://web.whatsapp.com`,
+  });
+
+  Transaction.create({
+    stripe_transaction_id: session.id,
+    payment_status: session.payment_status,
+    success_url: session.success_url,
+    cancel_url: session.cancel_url,
+    amount_total: session.amount_total,
+    customer_email: session.customer_email,
+    customer_id: userId,
   });
 
   res.status(200).json({ sessionUrl: session.url });

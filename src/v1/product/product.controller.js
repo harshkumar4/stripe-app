@@ -2,6 +2,8 @@ const stripe = require("../../configs/stripe.js");
 
 const errorHandler = require("../../utils/errorHandler");
 
+const Product = require("./product.model.js");
+
 const addProduct = errorHandler(async (req, res, next) => {
   const name = req.body.name;
   const price = req.body.price;
@@ -12,7 +14,7 @@ const addProduct = errorHandler(async (req, res, next) => {
     return;
   }
 
-  const product = await stripe.prices.create({
+  const stripeProduct = await stripe.prices.create({
     currency: "inr",
     unit_amount: price,
     recurring: recurring
@@ -25,10 +27,21 @@ const addProduct = errorHandler(async (req, res, next) => {
     },
   });
 
+  const product = await Product.create({
+    name: name.trim(),
+    price: price,
+    recurring: recurring,
+    interval: recurring ? "month" : "",
+    stripe_product_id: stripeProduct.product,
+    stripe_price_id: stripeProduct.id,
+  });
+
   res.status(201).json({ message: "Product Created!", product: product });
 });
 const getAllProducts = errorHandler(async (req, res, next) => {
-  const products = await stripe.products.list();
+  // const products = await stripe.products.list();
+
+  const products = await Product.find();
 
   res.status(201).json({ message: "Products fetched!", products: products });
 });
