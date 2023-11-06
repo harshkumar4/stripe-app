@@ -11,9 +11,9 @@ const transactionsRoutes = require("./transactions/transactions.routes");
 
 const router = express.Router();
 
-router.use("/v1", userRoutes);
-router.use("/v1", productRoutes);
-router.use("/v1", isAuthenticated, stripeRoutes);
-router.use("/v1", isAuthenticated, transactionsRoutes);
+router.use(userRoutes);
+router.use(productRoutes);
+router.use(isAuthenticated, stripeRoutes);
+router.use(isAuthenticated, transactionsRoutes);
 
 module.exports = router;

@@ -13,7 +13,7 @@ const mongoDbPassword = process.env.MONGO_PASSWORD;
 app.use(express.json());
 app.use(morgan("dev"));
 
-app.use(v1Routes);
+app.use("/v1", v1Routes);
 
 const port = process.env.PORT;
 
